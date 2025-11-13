@@ -1,7 +1,7 @@
 import { useState} from 'react'
 import {supabase} from './supabaseClient'
 
-export default funciton AddDeed(){
+export default function AddDeed(){
     const[desc, setDesc] =useState('')
     
     async function handleSubmit(e){
