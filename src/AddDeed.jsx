@@ -1,4 +1,4 @@
-import { useState} from 'react'
+import {useState} from 'react'
 import {supabase} from './supabaseClient'
 
 export default function AddDeed(){
@@ -10,7 +10,7 @@ export default function AddDeed(){
 
         const {error} = await supabase
         .from('deeds')
-        .insert({Description:desc})
+        .insert([{description:desc}])
 
         if (error){
             console.error('Error adding deed:', error)
