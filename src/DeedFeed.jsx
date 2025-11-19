@@ -1,36 +1,73 @@
-import {useEffect, useState} from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from './supabaseClient'
 
-export default function DeedFeed(){
-    const [deeds, setDeeds] = useState([])
+export default function DeedFeed({ onSelectForInspire }) {
+  const [deeds, setDeeds] = useState([])
 
-    useEffect(()=>{
-        async function loadDeeds(){
-            const {data, error} = await supabase
-            .from('deeds')
-            .select('*')
-            .order('created_at', {ascending: false})
+  useEffect(() => {
+    async function loadDeeds() {
+      // fetch deeds
+      const { data, error } = await supabase
+        .from('deeds')
+        .select('id, description, inspired_by, created_at')
+        .order('created_at', { ascending: false })
 
-            if (error){
-                console.error('Error loading deeds:', error)
-            } else {
-                setDeeds(data)
-            }
-        }
+      if (error) {
+        console.error(error)
+      } else {
+        setDeeds(data)
+      }
+    }
+    loadDeeds()
+  }, [])
 
-        loadDeeds()
-    }, [])
-    
-    return(
-        <div>
-            <h2 className="text-xl font bold mb-2">ShineChain Feed</h2>
-            <ul>
-                {deeds.map((d)=>(
-                    <li key={d.id} className="p-2 border-b">
-                        {d.description}
-                    </li>
-                ))}
-            </ul>
-        </div>
-    )
+  // counts times each deed inspired another
+  const inspireCounts = deeds.reduce((acc, d) => {
+    if (d.inspired_by) {
+      acc[d.inspired_by] = (acc[d.inspired_by] || 0) + 1
+    }
+    return acc
+  }, {})
+
+  // helper to find description of a parent deed (if present)
+  const findDeedText = (id) => deeds.find((x) => x.id === id)?.description
+
+  return (
+    <div>
+      <h2 className="text-xl font-bold mb-2">ShineChain Feed</h2>
+      <ul>
+        {deeds.map((d) => (
+          <li key={d.id} className="p-3 border-b flex justify-between items-start gap-3">
+            <div>
+              <div className="text-base">{d.description}</div>
+
+              {/* show inspired by with snippet */}
+              {d.inspired_by && (
+                <div className="text-sm text-gray-400 mt-1">
+                  Inspired by: “{findDeedText(d.inspired_by) || 'unknown'}”
+                </div>
+              )}
+            </div>
+
+            <div className="text-right">
+              <div className="text-sm">{new Date(d.created_at).toLocaleString()}</div>
+
+              {/* show count of how many this deed inspired */}
+              <div className="text-xs mt-1">
+                Inspired <strong>{inspireCounts[d.id] || 0}</strong>
+              </div>
+
+              {/* quick action: start a new deed inspired by this one */}
+              <button
+                className="mt-2 text-sm underline"
+                onClick={() => onSelectForInspire && onSelectForInspire(d.id)}
+              >
+                Build on this
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
 }
