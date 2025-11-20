@@ -5,6 +5,9 @@ export default function NetworkVisualization({ deeds, highlightedDeedId = null }
   const [nodes, setNodes] = useState([]);
   const [edges, setEdges] = useState([]);
   const [hoveredNode, setHoveredNode] = useState(null);
+  
+  // NEW: State to track where the mouse is for the tooltip
+  const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
 
   // Build nodes and edges
   useEffect(() => {
@@ -146,6 +149,10 @@ export default function NetworkVisualization({ deeds, highlightedDeedId = null }
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
+    
+    // NEW: Update tooltip position state
+    // We add +15px so the tooltip doesn't cover the mouse cursor
+    setTooltipPos({ x: e.clientX + 15, y: e.clientY + 15 });
 
     const hovered = nodes.find(node => {
       const dx = x - node.x;
@@ -158,21 +165,26 @@ export default function NetworkVisualization({ deeds, highlightedDeedId = null }
   };
 
   return (
-    <div className="relative w-screen h-screen">
+    <div className="relative w-full h-full">
       <canvas
         ref={canvasRef}
         onMouseMove={handleMouseMove}
         className="w-full h-full block"
       />
 
-      {/* Fixed tooltip in top-left with fade */}
-      <div
-        className={`absolute top-4 left-4 bg-black/80 text-white px-4 py-2 rounded-lg text-sm max-w-xs transition-opacity duration-300 ${
-          hoveredNode ? 'opacity-100' : 'opacity-0'
-        } z-50 pointer-events-none`}
-      >
-        {hoveredNode ? nodes.find(n => n.id === hoveredNode)?.deed.description : ''}
-      </div>
+      {/* NEW: Dynamic Tooltip following the mouse */}
+      {hoveredNode && (
+        <div
+          className="fixed z-50 bg-black/90 text-white px-4 py-2 rounded-lg text-sm border border-purple-500/30 backdrop-blur-sm pointer-events-none shadow-xl transition-opacity duration-200"
+          style={{
+            left: tooltipPos.x,
+            top: tooltipPos.y,
+          }}
+        >
+          <div className="font-bold text-purple-300 text-xs mb-1">Deed</div>
+          {nodes.find(n => n.id === hoveredNode)?.deed.description}
+        </div>
+      )}
     </div>
   );
 }

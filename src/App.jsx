@@ -3,6 +3,7 @@ import AddDeed from './AddDeed'
 import DeedFeed from './DeedFeed'
 import NetworkVisualization from './NetworkVisualization'
 import { supabase } from './supabaseClient'
+import { BackgroundBeams } from './BackgroundBeams'
 
 function App() {
   const [prefillId, setPrefillId] = useState(null)
@@ -23,7 +24,6 @@ function App() {
 
     loadDeeds()
 
-    // Realtime subscription
     channel = supabase
       .channel('network-deeds')
       .on(
@@ -71,27 +71,26 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 text-white">
-      <div className="max-w-7xl mx-auto p-6">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-6">
-            <h1 className="text-5xl font-bold bg-gradient-to-r from-yellow-400 to-pink-500 bg-clip-text text-transparent">
-              ShineChain
-            </h1>
-            <span className="text-4xl animate-pulse">✨</span>
-          </div>
+    <div className="min-h-screen w-full relative bg-neutral-950 text-white overflow-x-hidden selection:bg-purple-500/30">
+      <BackgroundBeams />
+
+      {/* HEADER LAYER - Z-Index 50 to stay on top */}
+      <div className="relative z-50 max-w-7xl mx-auto px-6 pt-8 pointer-events-none">
+        <div className="pointer-events-auto mb-8 text-center">
+          <h1 className="text-6xl md:text-7xl font-bold bg-clip-text text-transparent bg-gradient-to-b from-neutral-200 to-neutral-600 mb-4">
+            ShineChain <span className="text-4xl animate-pulse">✨</span>
+          </h1>
 
           {/* View Toggle */}
-          <div className="flex gap-4 mb-6">
+          <div className="flex justify-center gap-4 mb-6">
             {['feed', 'network'].map(v => (
               <button
                 key={v}
                 onClick={() => setView(v)}
-                className={`px-6 py-3 rounded-lg font-semibold transition-all flex items-center gap-2 ${
+                className={`px-6 py-2 rounded-full font-medium transition-all border backdrop-blur-md ${
                   view === v
-                    ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg'
-                    : 'bg-gray-800/50 text-gray-300 hover:bg-gray-700/50'
+                    ? 'bg-white/10 border-white/20 text-white shadow-[0_0_15px_rgba(255,255,255,0.1)]'
+                    : 'bg-black/20 border-transparent text-neutral-500 hover:text-neutral-300'
                 }`}
               >
                 {v === 'feed' ? 'Feed View' : 'Network View'}
@@ -99,31 +98,35 @@ function App() {
             ))}
           </div>
 
-          {/* Add Deed Form */}
+          {/* Add Deed Form (Only shows in Feed view) */}
           {view === 'feed' && (
-            <div className="bg-gray-800/40 backdrop-blur-md border border-purple-500/30 rounded-xl p-6 shadow-lg">
-              <AddDeed onAdded={handleAdded} prefillInspiredBy={prefillId} />
+            <div className="max-w-2xl mx-auto text-left">
+              <div className="bg-gray-800/40 backdrop-blur-md border border-purple-500/30 rounded-xl p-6 shadow-lg">
+                <AddDeed onAdded={handleAdded} prefillInspiredBy={prefillId} />
+              </div>
             </div>
           )}
         </div>
-
-        {/* Main Content */}
-        {view === 'network' ? (
-          <div className="relative w-screen h-screen">
-            <NetworkVisualization
-              deeds={allDeeds}
-              highlightedDeedId={highlightedDeedId}
-            />
-          </div>
-        ) : (
-          <div className="bg-gray-800/40 backdrop-blur-md border border-purple-500/30 rounded-xl p-6 shadow-xl">
-            <DeedFeed onSelectForInspire={handleSelectForInspire} />
-          </div>
-        )}
       </div>
+
+      {/* FEED CONTENT LAYER */}
+      {view === 'feed' && (
+        <div className="relative z-10 max-w-7xl mx-auto px-6 pb-12">
+           <DeedFeed onSelectForInspire={handleSelectForInspire} />
+        </div>
+      )}
+
+      {/* NETWORK VISUALIZATION LAYER - Full Screen Fixed Overlay */}
+      {view === 'network' && (
+        <div className="fixed inset-0 z-40">
+          <NetworkVisualization
+            deeds={allDeeds}
+            highlightedDeedId={highlightedDeedId}
+          />
+        </div>
+      )}
     </div>
   )
 }
 
 export default App
-
