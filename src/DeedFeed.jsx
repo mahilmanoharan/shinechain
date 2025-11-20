@@ -5,115 +5,51 @@ export default function DeedFeed({ onSelectForInspire }) {
   const [deeds, setDeeds] = useState([])
 
   useEffect(() => {
-    async function loadInitial() {
-      // fetch deeds
+    async function loadDeeds() {
       const { data, error } = await supabase
         .from('deeds')
         .select('id, description, inspired_by, created_at')
         .order('created_at', { ascending: false })
-
       if (!error) setDeeds(data)
     }
-    
-    loadInitial()
-
-    // realtime channel creation
-    const channel = supabase.channel('deeds-changes')
-
-        // listen for INSERT events
-        .on(
-            'postgres_changes',
-            {event: 'INSERT', schema: 'public', table: 'deeds'},
-            (payload)=>{
-                console.log('New deed received:',payload.new)
-
-                //Add new row to top of feed
-                setDeeds(prev=> [payload.new, ...prev])
-            }
-        )
-
-        //listen for UPDATE  events
-        .on(
-            'postgres_changes',
-            {event:'UPDATE', schema:'public', table: 'deeds'},
-            (payload) => {
-                console.log('Updated deed:',payload.new)
-
-                setDeeds(prev=>
-                    prev.map(d => d.id === payload.new.id ? payload.new : d)
-                )
-            }
-        )
-
-
-        // Listen for DELETE events
-        .on(
-            'postgres_changes',
-            { event: 'DELETE', schema: 'public', table: 'deeds'},
-            (payload)=> {
-                console.log('Deleted deed:', payload.old)
-
-                setDeeds(prev =>
-                    prev.filter(d => d.id !== payload.old.id)
-                )
-            }
-        )
-
-        .subscribe()
-
-        //Clean up channel on component unmount
-        return() => {
-            supabase.removeChannel(channel)
-        }
+    loadDeeds()
   }, [])
 
-  // counts times each deed inspired another
   const inspireCounts = deeds.reduce((acc, d) => {
-    if (d.inspired_by) {
-      acc[d.inspired_by] = (acc[d.inspired_by] || 0) + 1
-    }
+    if (d.inspired_by) acc[d.inspired_by] = (acc[d.inspired_by] || 0) + 1
     return acc
   }, {})
 
-  // helper to find description of a parent deed (if present)
-  const findDeedText = (id) => deeds.find((x) => x.id === id)?.description
+  const findDeedText = (id) => deeds.find(x => x.id === id)?.description
 
   return (
-    <div>
-      <h2 className="text-xl font-bold mb-2">ShineChain Feed</h2>
-      <ul>
-        {deeds.map((d) => (
-          <li key={d.id} className="p-3 border-b flex justify-between items-start gap-3">
-            <div>
-              <div className="text-base">{d.description}</div>
-
-              {/* show inspired by with snippet */}
-              {d.inspired_by && (
-                <div className="text-sm text-gray-400 mt-1">
-                  Inspired by: “{findDeedText(d.inspired_by) || 'unknown'}”
-                </div>
-              )}
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      {deeds.map((d) => (
+        <div
+          key={d.id}
+          className="cursor-pointer p-5 bg-gray-800/40 backdrop-blur-md border border-purple-500/30 rounded-xl shadow-lg hover:shadow-2xl transition-all transform hover:-translate-y-1 hover:scale-102"
+          onClick={() => onSelectForInspire && onSelectForInspire(d.id)}
+        >
+          <div className="text-lg font-bold text-white mb-2">{d.description}</div>
+          {d.inspired_by && (
+            <div className="text-sm text-purple-300 italic">
+              Inspired by: “{findDeedText(d.inspired_by) || 'unknown'}”
             </div>
-
-            <div className="text-right">
-              <div className="text-sm">{new Date(d.created_at).toLocaleString()}</div>
-
-              {/* show count of how many this deed inspired */}
-              <div className="text-xs mt-1">
-                Inspired <strong>{inspireCounts[d.id] || 0}</strong>
-              </div>
-
-              {/* quick action: start a new deed inspired by this one */}
-              <button
-                className="mt-2 text-sm underline"
-                onClick={() => onSelectForInspire && onSelectForInspire(d.id)}
-              >
-                Build on this
-              </button>
+          )}
+          {inspireCounts[d.id] > 0 && (
+            <div className="mt-2 inline-block bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+              Inspired {inspireCounts[d.id]}
             </div>
-          </li>
-        ))}
-      </ul>
+          )}
+          {onSelectForInspire && (
+            <button
+              className="mt-2 text-sm text-purple-400 hover:text-pink-400 hover:underline font-medium"
+            >
+              Build on this
+            </button>
+          )}
+        </div>
+      ))}
     </div>
   )
 }
