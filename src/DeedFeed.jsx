@@ -5,20 +5,66 @@ export default function DeedFeed({ onSelectForInspire }) {
   const [deeds, setDeeds] = useState([])
 
   useEffect(() => {
-    async function loadDeeds() {
+    async function loadInitial() {
       // fetch deeds
       const { data, error } = await supabase
         .from('deeds')
         .select('id, description, inspired_by, created_at')
         .order('created_at', { ascending: false })
 
-      if (error) {
-        console.error(error)
-      } else {
-        setDeeds(data)
-      }
+      if (!error) setDeeds(data)
     }
-    loadDeeds()
+    
+    loadInitial()
+
+    // realtime channel creation
+    const channel = supabase.channel('deeds-changes')
+
+        // listen for INSERT events
+        .on(
+            'postgres_changes',
+            {event: 'INSERT', schema: 'public', table: 'deeds'},
+            (payload)=>{
+                console.log('New deed received:',payload.new)
+
+                //Add new row to top of feed
+                setDeeds(prev=> [payload.new, ...prev])
+            }
+        )
+
+        //listen for UPDATE  events
+        .on(
+            'postgres_changes',
+            {event:'UPDATE', schema:'public', table: 'deeds'},
+            (payload) => {
+                console.log('Updated deed:',payload.new)
+
+                setDeeds(prev=>
+                    prev.map(d => d.id === payload.new.id ? payload.new : d)
+                )
+            }
+        )
+
+
+        // Listen for DELETE events
+        .on(
+            'postgres_changes',
+            { event: 'DELETE', schema: 'public', table: 'deeds'},
+            (payload)=> {
+                console.log('Deleted deed:', payload.old)
+
+                setDeeds(prev =>
+                    prev.filter(d => d.id !== payload.old.id)
+                )
+            }
+        )
+
+        .subscribe()
+
+        //Clean up channel on component unmount
+        return() => {
+            supabase.removeChannel(channel)
+        }
   }, [])
 
   // counts times each deed inspired another
